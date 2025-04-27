@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Bloom studios clientapi Serverless API with API Gateway, Lambda, DynamoDB, Cognito
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.11
+
+Resources:
+
+  #? DynamoDB Table for usage
+  UsageTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: UsageTable
+      AttributeDefinitions:
+        - AttributeName: ApiKeyId
+          AttributeType: S
+        - AttributeName: Timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: ApiKeyId
+          KeyType: HASH  #* Partition Key
+        - AttributeName: Timestamp
+          KeyType: RANGE #* Sort Key
+      BillingMode: PAY_PER_REQUEST
+
+  #? Cognito User Pool
+  DeveloperUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: DeveloperPortalUserPool
+      AutoVerifiedAttributes:
+        - email
+
+  #? Lambda Function for /bfl/generate
+  GenerateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: generate.handler
+      Runtime: python3.11
+      CodeUri: src/
+      Events:
+        GenerateAPI:
+          Type: Api
+          Properties:
+            Path: /bfl/generate
+            Method: post
+
+  #? Lambda Function for /bfl/get_result
+  GetResultFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get_result.handler
+      Runtime: python3.11
+      CodeUri: src/
+      Events:
+        GetResultAPI:
+          Type: Api
+          Properties:
+            Path: /bfl/get_result
+            Method: get
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
